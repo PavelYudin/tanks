@@ -1,0 +1,639 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="UTF-8" content="text/html" http-equiv="content-type">
+	<link type="text/css" rel="stylesheet" href="style/style.css" media="screen"/>
+	<title>Tanks</title>
+</head>
+<body>
+	<div id="major"></div>
+	<script type="text/javascript"> 
+		"use strict";
+		var level=1;
+		var kolTank=1;
+		var minaImg='img/mina.jpg';
+		var ownImg='img/own.jpg';
+		var enemyImg='img/enemy.jpg';
+		var wallImg='img/wall.jpg';
+		function S(kolTank){
+			//констркутор для создания сетки
+			function Element(div){
+				div.style.width="40px";
+				div.style.height="40px";
+				div.style.cssFloat="left";
+				div.style.position="relative"
+				div.zIndex=1;
+				return div;	
+			}
+			function Element1(div){
+				div.style.width="13px";
+				div.style.height="13px";
+				div.style.position="relative"
+				div.style.cssFloat="left";
+				div.style.zIndex="900";
+				return div;	
+			}
+			//строим сетку
+			for(var i=0;i<500;i++){                           
+			var a=new Element(document.createElement('div'));
+			major.appendChild(a);
+			}   
+			//сетка стрелять
+			for(var i=0;i<500;i++){                           
+				for(var j=0;j<9;j++){
+					var a=new Element1(document.createElement('div'));
+					major.children[i].appendChild(a);
+				}
+			}	
+			function Tank(name,img,positionDiv,_referencepoint){ //класс самого танка, от которого наследуются противники танка
+				var createImg=document.createElement('img');//создаю картинку
+				createImg.src=img;//указываем расположение файла
+				createImg.id="img";
+				this.img=createImg;
+				this.img.style.zIndex="100";
+				this.name=name;//имя такна
+				this._referencepoint=_referencepoint;//ориентир на поле
+				this.positionDiv=positionDiv;//позиция на поле
+				Tank.ReferencePoint=['rotate(0deg)','rotate(90deg)','rotate(180deg)','rotate(270deg)'];//массив возможных расположений
+				this.img.style.transform=Tank.ReferencePoint[this._referencepoint];//изначальный ориентир
+				major.children[this.positionDiv].appendChild(this.img);//добавляем элемент на поле
+			}
+
+			Tank.prototype.referencePoint=function(i){														//метод для изменения ориентира на поле
+				this.img.style.transform=Tank.ReferencePoint[i];
+				this._referencepoint=i;
+			}
+			Tank.prototype.position=function(positionDiv){                         		//метод для изменения расположения на поле
+				this.positionDiv=positionDiv;
+				major.children[this.positionDiv].appendChild(this.img);
+			}	
+			Tank.Kill_Tank=[];
+			Tank.prototype.control=function(value){ //переопределяем родительский метод для добавления просчета(не врезаться в танки)
+				if(this.constructor==TankOther){ //что бы вражеский танк по пули не лез главного танка
+					for(let i=0;i<Tank.Cartridges.length;i++){
+						if(this.positionDiv+Number(value)==Tank.Cartridges[i].positionDiv && Tank.Cartridges[i].color=="blue"){return false;}
+					}
+				}
+				function Tower_control(){  //проверка на таран стен
+					for(var i=0;i<Tower.position.length;i++){ 
+						if(this.positionDiv+Number(value)==Tower.position[i]){
+							if(this.constructor==Whizbang || arguments[1]){//если попали по башне удаляем елемент(arguments если стреляешь вплотную стоишь к башне)
+								major.children[Tower.position[i]].removeChild(major.children[Tower.position[i]].children[9]);
+								Tower.position.splice(i, 1);
+							}
+							return false;
+						}
+					}
+					return true;
+				}
+				function del_min(i){//удаляем мину
+					Tank.mins[i].kol=2;
+					Tank.mins[i].animat_radius();
+				}
+				if(Tank.Kill_Tank.length){////проверка на координаты массив убитых танков
+					for(let i=0;i<Tank.Kill_Tank.length;i++){
+						if(this.positionDiv+Number(value)==Tank.Kill_Tank[i]){
+							return false;
+						}
+					}	
+				}
+				if(mainTank.kolMin<3){//если уже какие то мины положил
+					for(var i=0;i<Tank.mins.length;i++){//проходим по всем минам
+						if(Tank.mins[i].enable2 || Tank.mins[i].enable){// только активным
+							if(this.constructor==Whizbang && Tank.mins[i].radius[0]==this.positionDiv+Number(value)){//если пуля поппала по самой мине
+								del_min(i);//удаляем мину
+							}
+							if(this.positionDiv+Number(value)==Tank.mins[i].radius[0]){del_min(i);}
+								if(Tank.mins[i].radius.indexOf(this.positionDiv+Number(value))!=-1 && Tank.mins[i].enable){//если че то в зоне поражения мины и она активна
+									if((this.constructor==Tank || this.constructor==TankOther) && Tank.mins[i].animate){
+									Tank.mins[i].animat_radius();
+									}			
+								}
+						}
+					}
+				}
+				if(Tank.mins.length && this.constructor==Whizbang){////проверка есть ли мины на поле
+					for(let i=0;i<Tank.mins.length;i++){
+						if(this.positionDiv+Number(value)==Tank.mins[i].createMin.positionDiv || this.positionDiv==Tank.mins[i].createMin.positionDiv){//если попал по мине с растояния или стоя вплотную
+							if(Tank.mins[i].enable || Tank.mins[i].enable2){//если попал и по включенной мине то пуля есчезает
+								return false;}
+						}
+					}	
+				}		
+				if(!Tower_control.call(this,value,arguments[1])){
+					return false;
+				}	
+
+				for(var i=0;i<Tank.Cartridges.length;i++){ //что бы танк не догнал пулю
+					if(this.constructor!=Whizbang){//если this не пуля то делаем проверку
+						if(this.positionDiv+Number(value)==Tank.Cartridges[i].positionDiv && this._referencepoint==Tank.Cartridges[i]._referencepoint){
+							return false;
+						}else {
+							if(this.positionDiv==Tank.Cartridges[i].positionDiv && Tank.Cartridges[i].color!='red' && !arguments[1]){//проверка если попал ,что бы вражеский не вражеского kill
+									kill(this);return false;
+							}else{;if(this.positionDiv+Number(value)==Tank.Cartridges[i].positionDiv && this.name=='main' && !this.secure){this.secure=1;exit();}}
+						}
+					}
+				}
+				for(var i=0;i<TankOther.mass_TankOther.length;i++){ 
+					var tank=TankOther.mass_TankOther[i];
+					if(this.positionDiv+Number(value)==tank.positionDiv || (this._referencepoint==1 && tank._referencepoint==3 && this.positionDiv==tank.positionDiv)){
+						if(this.constructor==Whizbang && this.name=='main'){ //если this пуля,значит убираем танк в кот попали
+							kill(tank);
+						}
+						if(this.name=='main' && arguments[1]){
+							kill(tank);
+						}
+						return false;
+					}
+				}
+				if(this.positionDiv+Number(value)==mainTank.positionDiv){ //если танк врезается в главного танка
+					exit();// 
+				}
+				return true;
+			}
+
+			Tank.prototype.ChangeOfDirection=function(){  ////////смена направления движения для вражеских танков
+				if(this.name=='main'){
+					return;
+				}
+				this.keyCode=TankOther.Array_referencePoint().key;
+			}
+			var sec;let ch=1;
+			Tank.prototype.go=function(keycode){												//метод для обработки движения танков
+				function f(){//функция для проверки пули и изменения движения танчиков
+					if(this.constructor==Whizbang){ //если куда то пуля врезадась удаляем ее
+							var s=this.positionArray;
+							Tank.Cartridges.splice(this.positionArray, 1);//из массива
+							for(var i=s;i<Tank.Cartridges.length;i++){//меняем свойство в котором хранится позиция в массиве пули
+								Tank.Cartridges[i].positionArray--;
+							}
+							return false;
+						}
+						this.ChangeOfDirection();//смена направления танчиков вражеских
+						return true;
+				}
+				let speedStep=()=>{
+					let now=performance.now();
+					let buf=now-sec;
+					if(isNaN(buf)){
+						sec=now;}
+						else if(buf<500){return false;}
+							 else{sec=now;}
+					return true;
+				}
+				if(keycode==40){ 													//вниз нажал
+					if(this.constructor==Tank && !arguments[1] ){
+						if(!speedStep()){return;}
+					}
+					if(this._referencepoint!=2){
+						this.referencePoint(2);
+						return;
+					}
+					if(this.positionDiv<475){
+						if(this.control('+25',arguments[1])){
+							if(this.constructor==Whizbang){return true;}//если проверяем ход пули то выходим отсюда
+							if(arguments[1]){return false;} //если проверяем танчик возде стенки стоит и стреляет
+							this.position(this.positionDiv+25);
+						}else{if(!f.apply(this)){return false;}else{return true;}}
+					}else{
+						if(!f.apply(this)){return false;}
+						else{return true;}//тогда стрелять через стенку стрелять не будет
+					} 
+					return true;
+				}			
+				if(keycode==39){                                         		//вправо нажал
+					if(this.constructor==Tank && !arguments[1] ){
+						if(!speedStep()){return;}
+					}
+					if(this._referencepoint!=1){
+						this.referencePoint(1);
+						return;
+					}
+					var str=this.positionDiv;
+					if(String(str).length==3){str=String(str).substring(1,4);}
+					if(!(+str==24 || +str==49|| +str==74|| +str==99)){
+						if(this.control('+1',arguments[1])){
+							if(this.constructor==Whizbang){return true;}//если проверяем ход пули то выходим отсюда
+							if(arguments[1]){return false;} //если проверяем танчик возде стенки стоит и стреляет
+							this.position(this.positionDiv+1);
+						}else{if(!f.apply(this)){return false;}else{return true;}}
+					}else {
+						if(!f.apply(this)){return false;}
+						else{return true;}//тогда стрелять через стенку стрелять не будет
+					}	
+					return true;	
+				}
+				if(keycode==38){                                         		//вверх нажал
+					if(this.constructor==Tank && !arguments[1] ){
+						if(!speedStep()){return;}
+					}
+					if(this._referencepoint!=0){
+						this.referencePoint(0);
+						return;
+					}
+					if(this.positionDiv>24){
+						if(this.control('-25',arguments[1])){
+							if(this.constructor==Whizbang){return true;}//если проверяем ход пули то выходим отсюда
+							if(arguments[1]){return false;} //если проверяем танчик возде стенки стоит и стреляет
+							this.position(this.positionDiv-25);
+						}else{if(!f.apply(this)){return false;}else{return true;}}
+					}else{
+						if(!f.apply(this)){return false;}
+						else{return true;}//тогда стрелять через стенку стрелять не будет
+					}
+					return true;
+				}
+				if(keycode==37){   //влео нажал
+					if(this.constructor==Tank && !arguments[1] ){
+						if(!speedStep()){return;}
+					}
+					if(this._referencepoint!=3){
+						this.referencePoint(3);
+						return;
+					}
+					var str=this.positionDiv;
+					if(String(str).length==3){str=String(str).substring(1,4);}
+					if(!(+str==75 || +str==50|| +str==25 || +str==0 || str=='00')){
+						if(this.control('-1',arguments[1])){
+							if(this.constructor==Whizbang){return true;}//если проверяем ход пули то выходим отсюда
+							if(arguments[1]){return false;} //если проверяем танчик возде стенки стоит и стреляет
+							this.position(this.positionDiv-1);
+						}else{if(!f.apply(this)){return false;}else{return true;}}
+					}else{
+						if(!f.apply(this)){return false;}
+						else{return true;}//тогда стрелять через стенку стрелять не будет
+					} 
+					return true;
+				}	
+				if(keycode==32){  //стрелять
+					mainTank.secure=1;//свойство что бы сам себя не убил стреляя рядом с летящей пулей
+					mainTank.shoot();
+				}
+				if(keycode==16){  //ставить мину
+					mainTank.mina(minaImg);
+				}
+			}
+			Tank.random=function(){															//статический метод для установки нового танка
+				do{
+					var rand = Math.floor( Math.random() * 499);  ///расположение нового танка
+				}while(Tower.position.indexOf(rand)!=-1)//проверка на то что бы координаты не попали на преграды
+				return rand;
+			}
+			Tank.Cartridges=[];//массив всех патронов которые еще летят
+			document.addEventListener("keydown", function checkKeycode(event)  //////////////событие клавы
+			{
+				var keycode;
+				if(!event) var event = window.event;
+				if (event.keyCode) keycode = event.keyCode; // IE
+				else if(event.which) keycode = event.which; // all browsers
+				try{
+				 mainTank.go(keycode);
+				 if(Tank.mins[Tank.mins.length-1].kol  && Tank.mins[Tank.mins.length-1].enable==false){
+					if(mainTank.positionDiv!=Tank.mins[Tank.mins.length-1].createMin.positionDiv && major.children[Tank.mins[Tank.mins.length-1].createMin.positionDiv].children.length<10){ //если после того как мину с клетки ушел танк,мину добавляем визуально
+						major.children[Tank.mins[Tank.mins.length-1].createMin.positionDiv].appendChild(Tank.mins[Tank.mins.length-1].createMin);
+						
+						var t=setInterval(function(){
+							for(var j=0;j<Tank.mins.length;j++){if(Tank.mins[j].enable2==false && Tank.mins[j].enable==false){Tank.mins[j].enable2=true;}
+								if(Tank.mins[j].enable==false && Tank.mins[j].radius.indexOf(mainTank.positionDiv)==-1){//активирую мину после того как сошел с нее и не попадаю в зону поражения
+									Tank.mins[j].enable=true;
+									clearInterval(t);
+								}	
+							}
+						},2000);			
+					}
+				 }
+				}catch(e){}
+			});
+			function Tower(img,limit){
+				var limit=limit || 200;
+				var row=0;
+				var kol=0;
+				var startposition=null;
+				while(kol<limit){
+					var column = Math.floor((Math.random() * 9)+2);//количество колонок(2-5)
+					switch (column){
+						case 2:row=10;break;
+						case 3:row=9;break;
+						case 4:row=8;break;
+						case 5:row=7;break;
+						case 6:row=6;break;
+						case 7:row=5;break;
+						case 8:row=4;break;
+						case 9:row=3;break;
+						case 10:row=2;break;
+					}
+					startposition=Math.floor((Math.random() * 500)+1);//определяем стартовую позицию
+					try{
+						for(var j=0;j<row;j++){
+							for(var i=0;i<column;i++){
+								var createImg=document.createElement('img');
+								if(Tower.position.indexOf(startposition+i)!=-1){
+									break;}
+								createImg.src=img;
+								createImg.id="img1";
+								major.children[startposition+i].appendChild(createImg);
+								Tower.position.push(startposition+i); //добавляем в массим стен
+								kol++;//общее количество счетаем занятых клеток
+							}
+							startposition=startposition+25;//переход на след строчку
+						}
+					}catch(e){
+						continue;	
+					}
+				}	
+			}
+			Tower.position=[];//массив координат стен
+			function TankOther(name,img,positionDiv,_referencepoint){//класс для создания вражеских танков
+				Tank.apply(this,arguments);	//закидываем все свойства от главного танка во вражеский танк
+				this.sum_steps=TankOther.random();//количество шагов для вражеского танка
+				this.keyCode=TankOther.Array_referencePoint().key;// код (клавиатуры) направления движения
+			}
+			TankOther.random=function(){///сколько шагов делать для вражеского танка
+				var rand = Math.floor((Math.random() * 10)+1);
+				return rand;
+			}
+			TankOther.prototype=Object.create(Tank.prototype);//наследуем все методы от главного танка вражеским
+			TankOther.prototype.constructor=TankOther;
+			TankOther.Array_referencePoint=function(){//статический метод для определения куда шагать вражескому танку
+				var array=[38,39,40,37];//коды стрелок на клавиатуре
+				var object={};//возвращаемый результат будет в объекте
+				var rand = Math.floor( Math.random() * 4);
+				object.key=array[rand];
+				object.position=rand;
+				return object;
+				
+			}
+			TankOther.mass_TankOther=[];//статическое свойство - массив вражеских танков
+			TankOther.createTank=function(kol){//статический метод для создания танков вражеский, kol - количество танко которое создается
+				for(var i=0;i<kol;i++){
+					TankOther.mass_TankOther.push(new TankOther("tank"+i,enemyImg,Tank.random(),TankOther.Array_referencePoint().position));//Tank.random -куда на поле выставить,
+																																			//TankOther.Array_referencePoint-ориентация на поле
+					TankOther.mass_TankOther[i].positionArray=TankOther.mass_TankOther.length-1;	//позиция в массиве вражеских танков																													
+				}
+				return TankOther.mass_TankOther;
+			}
+			TankOther.timer=null;//таймер для вражеских танков
+			TankOther.start=function(mass_TankOther){
+				TankOther.timer=setInterval(function(){
+					for(var i=0;i<mass_TankOther.length;i++){
+						var tank=mass_TankOther[i];
+						//стрельбу реализуем
+						var rand = Math.floor( Math.random() * 4);
+						if(!rand){
+							tank.shoot();
+						}
+						if(!tank.sum_steps){tank.sum_steps=TankOther.random();tank.ChangeOfDirection();}//если шаги кончились новые шаги расчитываем и направление			
+						tank.go(tank.keyCode);
+						tank.sum_steps--;
+						
+					}
+				},500);
+			}
+			function Whizbang(positionDiv,_referencepoint,name){//класс для создания патрона
+				switch(_referencepoint){
+					case 1:this.positionDiv=positionDiv+1;this.chet=4;this.array1=[4,6];this.step_positionDiv=1;this.Step_position=1;break;
+					case 2:this.positionDiv=positionDiv+25;this.chet=2;this.array1=[1,8];this.step_positionDiv=3;this.Step_position=25;break;
+					case 3:this.positionDiv=positionDiv-1;this.chet=6;this.array1=[6,4];this.step_positionDiv=-1;this.Step_position=-1;break;
+					case 0:this.positionDiv=positionDiv-25;this.chet=8;this.array1=[7,2];this.step_positionDiv=-3;this.Step_position=-25;break;
+				}
+				 //счетчик для мелкой сетки
+				if(name!=='main'){this.color='red';}else{this.color='blue';}
+				this.name=name;
+				this._referencepoint=_referencepoint;
+			}
+			Whizbang.prototype=Object.create(Tank.prototype);
+			Whizbang.prototype.constructor=Whizbang;//определяем constructor для метода control
+			Tank.timer=null;//таймер для патронов общий
+			Tank.prototype.shoot=function(){
+				var array=[38,39,40,37];//коды стрелок на клавиатуре
+				if(this.go(array[this._referencepoint],'shoot')){return;}
+				if(Tank.Cartridges.length && this.positionDiv+1==Tank.Cartridges[Tank.Cartridges.length-1].positionDiv && Tank.Cartridges[Tank.Cartridges.length-1].chet==4){return;}//что бы 2 подряд снаряда с одинаковыми координатами не создавались
+				Tank.Cartridges.push(new Whizbang(this.positionDiv,this._referencepoint,this.name));//создаем и добавляем пулю в массив
+				Tank.Cartridges[Tank.Cartridges.length-1].positionArray=Tank.Cartridges.length-1;//оперделяем для каждой пули позицию в массиве
+				major.children[Tank.Cartridges[Tank.Cartridges.length-1].positionDiv].children[Tank.Cartridges[Tank.Cartridges.length-1].chet-1].style.background=Tank.Cartridges[Tank.Cartridges.length-1].color;//ставля патрон на первое место,сразу после танка
+				major.children[Tank.Cartridges[Tank.Cartridges.length-1].positionDiv].children[Tank.Cartridges[Tank.Cartridges.length-1].chet-1].classList.add("whizbang");
+				if(Tank.timer){//если таймер уже есть очищаем и запихиваем все снаряды в новый таймер,дабы избежать увеличения скорости снарядов
+					clearTimeout(Tank.timer);
+				}
+				 Tank.timer=setInterval(function(){
+					if(!Tank.Cartridges.length){  //если массив снарядов пуст(все отстрелялись)
+						clearTimeout(Tank.timer);
+						return;
+					}else{
+						Step(Tank.Cartridges[Tank.Cartridges.length-1]._referencepoint);			
+
+						}
+				},100);	
+				function Step(_referencepoint){
+					for(var i=0;i<Tank.Cartridges.length;i++){
+						major.children[Tank.Cartridges[i].positionDiv].children[Tank.Cartridges[i].chet-1].style.background='';
+						if(Tank.Cartridges[i].chet==Tank.Cartridges[i].array1[1]){
+							if(!Tank.Cartridges[i].go(array[Tank.Cartridges[i]._referencepoint])){continue;}//проверка если патрон куда то врезался				
+							Tank.Cartridges[i].positionDiv=Tank.Cartridges[i].positionDiv+Tank.Cartridges[i].Step_position;
+							if(Tank.Cartridges[i]._referencepoint==3){Tank.Cartridges[i].chet=Tank.Cartridges[i].array1[0];}else{Tank.Cartridges[i].chet=Tank.Cartridges[i].array1[0]+1;}
+						}else{
+							Tank.Cartridges[i].chet=Tank.Cartridges[i].chet+Tank.Cartridges[i].step_positionDiv;
+						}
+						major.children[Tank.Cartridges[i].positionDiv].children[Tank.Cartridges[i].chet-1].classList.add("whizbang");
+						major.children[Tank.Cartridges[i].positionDiv].children[Tank.Cartridges[i].chet-1].style.background=Tank.Cartridges[i].color;
+					}
+				}
+			}
+			function exit(){
+				var text;
+				var exit = document.createElement('div');
+				if(!arguments.length){
+					exit.id='exit';
+					major.children[mainTank.positionDiv].removeChild(major.children[mainTank.positionDiv].children[9]);
+					mainTank=null;
+					clearInterval(Tank.timer);
+					clearInterval(TankOther.timer);
+					text="&nbspGAME<br> &nbsp&nbspOVER";
+				}else{
+					text=" Level "+arguments[0];
+				}	
+				document.body.appendChild(exit);
+				exit.classList.add("exit");
+				let height_elem=parseInt(getComputedStyle(exit).height);
+				let width_elem=parseInt(getComputedStyle(exit).width);
+				let height_screen=parseInt(document.documentElement.clientHeight)/2;
+				let width_screen=parseInt(document.documentElement.clientWidth)/2;
+				exit.style.top=height_screen-height_elem/2+'px';
+				exit.style.left=width_screen-width_elem/2+'px';
+				exit.innerHTML=text;		
+				return true;
+			}
+				function kill(tank){ //при попадании во вражеский танк убираем его из массива
+					var timer;
+					tank.img.style.zIndex="-1";//что бы тени поверх были 
+					function animation(){
+						var k=0;
+						timer=setInterval(function(){
+						if(k==0){
+					
+							major.children[tank.positionDiv].style.boxShadow="inset 0 0 0 5px #DC143C";k=1;}
+						else{
+						major.children[tank.positionDiv].style.boxShadow="";k=0;
+						}
+						},200);
+					}
+					animation();
+					var position=tank.positionDiv;
+					setTimeout(function(){
+						clearInterval(timer);
+						major.children[position].removeChild(major.children[position].children[9]);
+						Tank.Kill_Tank.pop();
+						if(TankOther.mass_TankOther.length==0){ //если все танки убиты переходим на след уровень
+							if(level==10){exit();} //если 10 уровней прошел конец игры
+							level++;//счетчик уровней
+							kolTank=kolTank+3;
+							if(!document.getElementById('exit')){exit(level);}
+							setTimeout(function(){del();
+							document.body.removeChild(document.body.children[2]);//удаляю табличку с level
+							S(kolTank);},3000);
+						}
+					},2000,position);
+					var s=tank.positionArray;
+					Tank.Kill_Tank.push(tank.positionDiv);//убыитый танк делаю на время как стена, что бы другие по нему не ходили
+					TankOther.mass_TankOther.splice(tank.positionArray, 1);
+					for(var i=s;i<TankOther.mass_TankOther.length;i++){//меняем свойство в котором хранится позиция в массиве танков 
+						TankOther.mass_TankOther[i].positionArray--;
+					}
+				}
+			function del(){
+			major.children[mainTank.positionDiv].removeChild(major.children[mainTank.positionDiv].children[9]);
+				mainTank=null;
+				clearInterval(Tank.timer);
+				clearInterval(TankOther.timer);
+				while(major.children.length){
+					major.removeChild(major.children[0]);
+				}
+				Tank.Cartridges=[];
+				Tower.position=[];
+			}
+			Tower(wallImg,200);
+			var mainTank=new Tank("main",ownImg,0,1);//создаем главный танк
+			mainTank.kolMin=3;// количество доступных мин
+
+			Tank.mins_kill=function(){
+				for(var i=0;i<Tank.mins.length;i++){//проходим по всем минам
+					if(Tank.mins[i].kol){// только активным
+						for(var j=0;j<Tank.mins.radius.length;j++){	
+						}
+					}
+				}
+			}
+			TankOther.start(TankOther.createTank(kolTank)); //запускаем игру//////////////////////////////////////////////[]
+			//метод для мин
+			Tank.mins=[];/// массив для мин главного танка
+			mainTank.mina=function(img){
+				if(this.kolMin){ //если мины не закончились
+					this.kolMin--;//уменьшаем количество допустимых мин
+					function CreateMin(){
+						this.createMin=document.createElement('img');
+						this.createMin.src=img;
+						this.createMin.style.zIndex="-1";
+						this.createMin.id="mina";
+						this.createMin.positionDiv=mainTank.positionDiv;
+						this.createMin.style.zIndex=0;
+						this.radius=[];
+						this.animate=true;
+						radius_pole.call(this);
+						this.kol=7;//если активна мина,для анимации
+						this.enable=false;//при создании мина выключена
+						this.enable2=false;
+					}
+					Tank.mins.push(new CreateMin());//добавляем в массив мин объект
+					CreateMin.prototype.animat_radius=animat_radius;
+				}
+				function radius_pole(){
+					var position=this.createMin.positionDiv;
+					this.radius.push(position);
+					if(String(position).length==3){var str=String(position).substring(1,4);}else{str=position;}
+					if(!(+str==75 || +str==50|| +str==25 || +str==0 || str=='00')){ //проверяю левую границу
+						this.radius.push(position-1);
+						if(position>25){this.radius.push(position-1-25);}
+						if(position<475){this.radius.push(position-1+25);}
+					}
+					if(position>24){
+						this.radius.push(position-25);	
+					}
+					if(position<475){
+						this.radius.push(position+25);
+					}
+					if(String(position).length==3){str=String(position).substring(1,4);}else{str=position;}
+					if(!(+str==24 || +str==49|| +str==74|| +str==99)){
+						this.radius.push(position+1);
+						if(position>24){this.radius.push(position+1-25);}
+						if(position<475){this.radius.push(position+1+25);}
+					}	
+				}
+			}
+			function animat_radius(){
+					var k=0;
+					var Timer;
+					var self=this;
+					 Timer=setTimeout(function Tick(){
+					if(self.kol){ //пока что поле мигает	
+						if(k==0){
+							for(var i=0;i<self.radius.length;i++){
+								var r=self.radius[i];
+								major.children[r].style.background="red";k=1;
+								major.children[r].style.opacity='0.5';
+							  }
+						}
+						else{
+							for(var i=0;i<self.radius.length;i++){
+								var r=self.radius[i];
+								major.children[r].style.background="";k=0;
+								major.children[r].style.opacity="";
+							}
+						}
+						self.kol--;
+					}else{//если мигать перестает
+						clearTimeout(Timer);
+						setTimeout(function(){
+						try{
+							self.enable=false;self.enable2=false;//выключаем мину после как отработала
+							major.children[self.radius[0]].removeChild(major.children[self.radius[0]].children[9]);
+							self.kol=0;
+						}catch(e){console.log("Касяк с удалением мины");}
+							del_tower(self);
+							for(let i=0;i<TankOther.mass_TankOther.length;i++){
+								if(self.radius.indexOf(TankOther.mass_TankOther[i].positionDiv)!=-1){//проверка на присутствие вражеских танков
+									kill(TankOther.mass_TankOther[i]);
+								}
+							}	
+							if(self.radius.indexOf(mainTank.positionDiv)!=-1){//проверка на присутствие главного танка
+								exit();
+							}		
+							for(var i=0;i<self.radius.length;i++){
+								var r=self.radius[i];
+								major.children[r].style.background="";
+								major.children[r].style.opacity="";
+							}	
+						},100);
+						return;
+					}	
+					Timer=setTimeout(Tick,400);
+					},400);
+					this.animate=false;	
+				function del_tower(obj){var buf;
+					var del=[];//массив для хранения элементов для удаления
+					var del1=[];//массив для хранения их индексов из массива башен
+					for(var i=0;i<obj.radius.length;i++){
+						buf=Tower.position.indexOf(obj.radius[i]);
+						if(buf!=-1){
+							major.children[obj.radius[i]].removeChild(major.children[obj.radius[i]].children[9]);
+							Tower.position.splice(buf,1);
+						}
+					}
+				}
+			}
+		}
+		S(kolTank);
+	</script>
+</body>
+
+</html>

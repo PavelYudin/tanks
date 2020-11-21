@@ -1,0 +1,50 @@
+ #major{
+		border: solid 1px black;
+		height:800px;
+		width:1000px;
+		position: fixed;
+        top: 50%;
+        left: 50%;
+        margin-right: -50%;
+        transform: translate(-50%, -50%);
+	    border: 60px solid gold;
+		border-image-source: url("../img/border.jpg");
+		border-image-slice: 110;
+		border-image-repeat: round;
+		background-image:url("../img/field.jpg");
+	}
+	#img{
+		bottom:40px;
+		margin: 1px 1px;
+		transform: rotate(90deg);
+		position:relative ;
+		z-index: 100;
+	}
+	#img1{
+		top:-40px;
+		margin: 1px 1px;
+		position:relative ;
+		z-index: 1;	
+	}
+	#mina{
+		left:0px;
+		position:absolute ;
+		z-index: 0;	
+	}
+	.exit {
+	  position: fixed;
+	 font-size: 60px;
+	  z-index: 9000;
+	  width: 210px;
+	  height:160px;
+	  background-color: rgb(255,239,205);
+	}
+	.whizbang{
+		 border-radius: 50%;
+	}
+	.center {
+		width: 200px;
+		padding: 10px; 
+		margin: auto; 
+		background: #fc0; 
+   }
